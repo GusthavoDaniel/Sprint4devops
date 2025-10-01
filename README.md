@@ -147,7 +147,7 @@ Após o deploy, você pode testar as funcionalidades CRUD da API. Utilize ferram
     *   `PUT /registros/{id}` - Atualizar registro RFID
     *   `DELETE /registros/{id}` - Excluir registro RFID
 
-**Exemplo de `curl` para criar uma filial:**
+**Exemplo de `curl` para criar uma filiall:**
 
 ```bash
 curl -X POST \\
