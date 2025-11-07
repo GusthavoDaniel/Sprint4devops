@@ -1,161 +1,125 @@
-# RFID Tracking Application
+# DevOps Tools & Cloud Computing - Sprint 4
 
-Este projeto é uma aplicação Spring Boot para rastreamento de motos com RFID, desenvolvida como parte do Challenge 2025 - 2º Semestre.
+Este projeto é uma aplicação Spring Boot para rastreamento de motos com RFID, desenvolvida como parte da entrega obrigatória da Sprint 4 da disciplina **DevOps Tools & Cloud Computing**.
 
-## Tecnologias Utilizadas
+## 1. Descrição da Solução (Requisito 1)
 
-*   **Java 17**
-*   **Spring Boot 3.2.5**
-*   **Spring Data JPA**
-*   **PostgreSQL** (Azure Database for PostgreSQL Flexible Server)
-*   **Flyway** para migrações de banco de dados
-*   **ModelMapper** para DTOs
-*   **Thymeleaf** para a camada de visualização (frontend)
-*   **Spring Security** para autenticação e controle de acesso
+A solução consiste em uma **API RESTful** desenvolvida em **Java** com o framework **Spring Boot**, que simula o rastreamento de motos por RFID. A aplicação permite o gerenciamento de Filiais, Motos e Registros RFID, implementando as operações básicas de **CRUD (Create, Read, Update, Delete)**.
 
-## Configuração do Ambiente Local
+### Stack de Tecnologias
 
-### Pré-requisitos
+| Componente | Tipo | Tecnologia/Ferramenta | Descrição Funcional |
+| :--- | :--- | :--- | :--- |
+| **Aplicação** | Backend API | Java 17, Spring Boot 3.2.5 | API RESTful para as operações de CRUD. |
+| **Banco de Dados** | PaaS em Nuvem | PostgreSQL (Azure Database for PostgreSQL) | Armazenamento persistente dos dados da aplicação. |
+| **Containerização** | Imagem | Docker | Empacotamento da aplicação para deploy em ambiente de contêiner. |
+| **Repositório de Código** | SCM | GitHub | Versionamento do código-fonte. |
+| **Orquestrador CI/CD** | Pipeline | Azure DevOps Pipelines | Automação do processo de Build (CI) e Deploy (CD). |
+| **Ambiente de Deploy** | PaaS em Nuvem | Azure Web App for Containers | Serviço de aplicação para hospedar o contêiner Docker. |
 
-*   Java Development Kit (JDK) 17
-*   Maven 3.x
-*   Docker (opcional, para rodar PostgreSQL localmente)
+## 2. Diagrama da Arquitetura e Fluxo CI/CD (Requisito 2)
 
-### Rodando a Aplicação Localmente
+O fluxo de CI/CD é acionado por um `push` de código para a branch `master` no **GitHub**.
 
-1.  **Clone o repositório:**
+1.  **Desenvolvedor** faz um `push` para o **GitHub**.
+2.  O **Azure DevOps Pipelines** detecta a alteração (Regra II).
+3.  **CI (Build)**: O pipeline executa o build do projeto (Maven), roda os testes unitários e constrói a **Imagem Docker** da aplicação.
+4.  A **Imagem Docker** é enviada para o **Azure Container Registry (ACR)** (Regra V).
+5.  **CD (Deploy)**: O pipeline de deploy é acionado (Regra III).
+6.  O pipeline de deploy utiliza a **Conexão de Serviço** e as **Variáveis de Ambiente Protegidas** (Regra IV) para:
+    *   Configurar o **Azure Web App for Containers** para puxar a nova imagem do **ACR**.
+    *   O **Azure Web App** hospeda o contêiner.
+7.  A aplicação se conecta ao **Azure Database for PostgreSQL** usando as variáveis de ambiente.
+8.  O **Usuário Final** acessa a aplicação via URL do Azure Web App.
 
-    ```bash
-    git clone <URL_DO_SEU_REPOSITORIO>
-    cd rfid-tracking
-    ```
+**(Nota: O diagrama visual deve ser incluído no PDF de entrega, conforme Requisito 2.)**
 
-2.  **Configurar Banco de Dados (PostgreSQL - Local com Docker)**
+## 3. Detalhamento dos Componentes (Requisito 3)
 
-    Se você deseja rodar o PostgreSQL localmente via Docker, execute:
+| Nome do componente | Tipo | Descrição funcional | Tecnologia/Ferramenta |
+| :--- | :--- | :--- | :--- |
+| Repositório de código | SCM | Onde o código-fonte está versionado. | GitHub |
+| Pipeline | Orquestrador CI | Compila e executa testes unitários. | Azure DevOps Pipelines |
+| Pipeline | Orquestrador CD | Empacota em Docker e faz o deploy no Azure Web App. | Azure DevOps Pipelines |
+| Banco de Dados | PaaS em Nuvem | Armazenamento persistente. | Azure Database for PostgreSQL |
+| Imagem de Deploy | Container | Empacotamento da aplicação. | Docker |
+| Ambiente de Execução | PaaS | Hospedagem do contêiner Docker. | Azure Web App for Containers |
 
-    ```bash
-    docker run --name rfid-postgres -e POSTGRES_USER=rfiduser -e POSTGRES_PASSWORD=rfidpass -e POSTGRES_DB=rfidtrackingdb -p 5432:5432 -d postgres:13
-    ```
+## 4. Banco de Dados em Nuvem (Requisito 4)
 
-    Aguarde alguns segundos para o container iniciar.
+*   **Tecnologia Aceita:** PostgreSQL
+*   **Serviço em Nuvem:** Azure Database for PostgreSQL - Flexible Server (PaaS)
+*   **Configuração:** As credenciais de conexão são injetadas no ambiente de execução do Azure Web App via variáveis de ambiente protegidas (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`), conforme configurado no arquivo `src/main/resources/application-prod.properties`.
 
-3.  **Configurar `application-dev.properties` (se existir ou criar)**
+## 5. Configuração do Projeto no Azure DevOps (Requisito 5)
 
-    Certifique-se de que seu `src/main/resources/application-dev.properties` (ou `application.properties` se não usar perfis) esteja configurado para o PostgreSQL local:
+*   **Project Name:** `Sprint 4 – Azure DevOps`
+*   **Description:** (Preencher com as informações do grupo e professor)
+*   **Visibility:** `Private`
+*   **Version control:** `Git`
+*   **Work item process:** `Scrum`
 
-    ```properties
-    spring.datasource.url=jdbc:postgresql://localhost:5432/rfidtrackingdb
-    spring.datasource.username=rfiduser
-    spring.datasource.password=rfidpass
-    spring.jpa.hibernate.ddl-auto=update
-    spring.jpa.show-sql=true
-    spring.jpa.properties.hibernate.format_sql=true
-    spring.flyway.enabled=true
-    ```
+## 6. Pipelines CI/CD (Requisito 7)
 
-4.  **Build do Projeto:**
+O pipeline está configurado via **YAML** no arquivo `azure-pipelines.yml` na raiz do projeto.
 
-    ```bash
-    mvn clean install
-    ```
+### CI (Build + Testes Automáticos)
 
-5.  **Executar a Aplicação:**
+*   **Ação:** `mvn clean package` (compilação e execução de testes unitários).
+*   **Containerização:** Build da imagem Docker (`Dockerfile`).
+*   **Publicação do Artefato:** Push da imagem Docker para o Azure Container Registry (ACR).
 
-    ```bash
-    mvn spring-boot:run
-    ```
+### CD (Deploy Automático)
 
-    
+*   **Ação:** Deploy da imagem Docker do ACR para o **Azure Web App for Containers**.
+*   **Variáveis de Ambiente:** As credenciais do banco de dados são passadas como variáveis de ambiente protegidas (Grupo de Variáveis `db-credentials`) para o Azure Web App.
 
-## Deploy para Azure App Service
+## 7. Instruções para Execução e Demonstração
 
-Este projeto utiliza o Azure App Service para deploy e Azure Database for PostgreSQL Flexible Server como banco de dados. Os scripts CLI para provisionamento estão localizados em `devops_scripts/provision_azure.sh`.
+### Pré-requisitos no Azure
 
-### Pré-requisitos para Deploy
+1.  **Azure Database for PostgreSQL:** Provisionar o serviço e obter as credenciais.
+2.  **Azure Container Registry (ACR):** Provisionar o serviço.
+3.  **Azure Web App for Containers:** Provisionar o serviço.
 
-*   **Azure CLI** instalado e configurado.
-*   Uma conta Azure ativa.
+### Configuração no Azure DevOps
 
-### Passos para o Deploy
+1.  **Criar Projeto:** Conforme Requisito 5.
+2.  **Conexões de Serviço:** Criar conexões para o Azure Subscription e para o ACR.
+3.  **Grupo de Variáveis:** Criar o Grupo de Variáveis `db-credentials` com as credenciais do PostgreSQL (marcar como seguras).
+4.  **Configurar Pipeline:** Criar um novo pipeline no Azure DevOps, apontando para o arquivo `azure-pipelines.yml` no repositório GitHub. **Substituir os placeholders** (`<NOME_DA_SUA_SERVICE_CONNECTION_AZURE>`, etc.) no arquivo YAML com os nomes reais dos seus recursos.
 
-1.  **Autenticar no Azure CLI:**
+### Demonstração (Requisito 8)
 
-    ```bash
-    az login
-    ```
+A demonstração em vídeo deve seguir o fluxo:
 
-2.  **Executar o Script de Provisionamento:**
+1.  Mostrar as ferramentas usadas (IDE, Azure DevOps, Banco de Dados, Portal do Azure).
+2.  Apresentar a configuração do pipeline (`azure-pipelines.yml`).
+3.  **Alterar o `README.md`** (ou outro arquivo) e fazer `push` para o GitHub.
+4.  Mostrar o início automático do pipeline após o `push`.
+5.  Explicar cada etapa do CI/CD durante a execução.
+6.  Mostrar o artefato criado (a imagem no ACR) e os resultados dos testes.
+7.  Demonstrar no Portal do Azure os recursos atualizados pelo deploy (Web App).
+8.  Acessar a aplicação no Web App e executar o **CRUD completo** (inserir, consultar, atualizar, deletar), mostrando no banco de dados cada operação.
 
-    Navegue até o diretório `devops_scripts` e execute o script:
+## Endpoints da API (CRUD)
 
-    ```bash
-    cd devops_scripts
-    chmod +x provision_azure.sh
-    ./provision_azure.sh
-    ```
+A aplicação está acessível em `https://<NOME_DO_SEU_WEB_APP>.azurewebsites.net/mottu`.
 
-    **IMPORTANTE:** O script `provision_azure.sh` contém uma senha de exemplo (`YourStrongPassword123!`) para o administrador do PostgreSQL. **Substitua-a por uma senha forte e segura antes de executar o script em um ambiente real.**
-
-    Este script irá:
-    *   Criar um Grupo de Recursos.
-    *   Criar um Plano do Serviço (App Service Plan).
-    *   Criar o Serviço de Aplicativo (Web App) para Java 17.
-    *   Criar um Azure Database for PostgreSQL Flexible Server.
-    *   Criar o banco de dados `rfidtrackingdb` no servidor PostgreSQL.
-    *   Configurar as variáveis de ambiente (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_JPA_HIBERNATE_DDL_AUTO`) no App Service.
-
-3.  **Build e Deploy da Aplicação:**
-
-    Após o provisionamento dos recursos, você pode fazer o deploy da sua aplicação Spring Boot para o Azure App Service. Certifique-se de estar no diretório raiz do projeto (`rfid-tracking`).
-
-    ```bash
-    mvn clean package
-    az webapp deploy --resource-group rfid-tracking-rg --name rfid-tracking-app --src-path target/*.jar
-    ```
-
-    A URL da sua aplicação será `https://rfid-tracking-app.azurewebsites.net/mottu` (substitua `rfid-tracking-app` pelo nome real do seu App Service, se diferente).
-
-## Estrutura do Banco de Dados (DDL)
-
-O DDL (Data Definition Language) para as tabelas do banco de dados pode ser encontrado no arquivo `script_bd.sql` na raiz do projeto.
-
-## Testes (Exemplos de CRUD)
-
-Após o deploy, você pode testar as funcionalidades CRUD da API. Utilize ferramentas como Postman, Insomnia ou `curl`.
-
-**Exemplo de Endpoints (base: `https://rfid-tracking-app.azurewebsites.net/mottu`)**
-
-*   **Filiais:**
-    *   `GET /filiais` - Listar todas as filiais
-    *   `POST /filiais` - Criar nova filial
-    *   `GET /filiais/{id}` - Obter filial por ID
-    *   `PUT /filiais/{id}` - Atualizar filial
-    *   `DELETE /filiais/{id}` - Excluir filial
-
-*   **Motos:**
-    *   `GET /motos` - Listar todas as motos
-    *   `POST /motos` - Criar nova moto
-    *   `GET /motos/{id}` - Obter moto por ID
-    *   `PUT /motos/{id}` - Atualizar moto
-    *   `DELETE /motos/{id}` - Excluir moto
-
-*   **Registros RFID:**
-    *   `GET /registros` - Listar todos os registros RFID
-    *   `POST /registros` - Criar novo registro RFID
-    *   `GET /registros/{id}` - Obter registro RFID por ID
-    *   `PUT /registros/{id}` - Atualizar registro RFID
-    *   `DELETE /registros/{id}` - Excluir registro RFID
-
-**Exemplo de `curl` para criar uma filiall:**
-
-```bash
-curl -X POST \\
-  https://rfid-tracking-app.azurewebsites.net/mottu/filiais \\
-  -H 'Content-Type: application/json' \\
-  -d '{"nome": "Nova Filial", "endereco": "Rua Teste, 100"}'
-```
-
-Lembre-se de substituir a URL base pela URL da sua aplicação no Azure.
-
-
+| Recurso | Método | Descrição |
+| :--- | :--- | :--- |
+| `/mottu/filiais` | `GET` | Listar todas as filiais. |
+| `/mottu/filiais` | `POST` | Criar nova filial. |
+| `/mottu/filiais/{id}` | `GET` | Obter filial por ID. |
+| `/mottu/filiais/{id}` | `PUT` | Atualizar filial. |
+| `/mottu/filiais/{id}` | `DELETE` | Excluir filial. |
+| `/mottu/motos` | `GET` | Listar todas as motos. |
+| `/mottu/motos` | `POST` | Criar nova moto. |
+| `/mottu/motos/{id}` | `GET` | Obter moto por ID. |
+| `/mottu/motos/{id}` | `PUT` | Atualizar moto. |
+| `/mottu/motos/{id}` | `DELETE` | Excluir moto. |
+| `/mottu/registros` | `GET` | Listar todos os registros RFID. |
+| `/mottu/registros` | `POST` | Criar novo registro RFID. |
+| `/mottu/registros/{id}` | `GET` | Obter registro RFID por ID. |
+| `/mottu/registros/{id}` | `PUT` | Atualizar registro RFID. |
+| `/mottu/registros/{id}` | `DELETE` | Excluir registro RFID. |
