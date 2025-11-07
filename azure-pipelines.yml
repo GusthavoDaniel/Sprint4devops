@@ -82,7 +82,7 @@ stages:
                     appName: '$(webAppName)'                              # sprint4-api-rm554681
                     containers: '$(acrName)/$(imageRepository):$(tag)'    # acrdevops.../sprintdevops3-app:<buildId>
                     appSettings: |
-                      SPRING_PROFILES_ACTIVE=prod
-                      SPRING_DATASOURCE_URL=$(SPRING_DATASOURCE_URL)
-                      SPRING_DATASOURCE_USERNAME=$(SPRING_DATASOURCE_USERNAME)
-                      SPRING_DATASOURCE_PASSWORD=$(SPRING_DATASOURCE_PASSWORD)
+                      -SPRING_PROFILES_ACTIVE prod
+                      -SPRING_DATASOURCE_URL $(SPRING_DATASOURCE_URL)
+                      -SPRING_DATASOURCE_USERNAME $(SPRING_DATASOURCE_USERNAME)
+                      -SPRING_DATASOURCE_PASSWORD $(SPRING_DATASOURCE_PASSWORD)
