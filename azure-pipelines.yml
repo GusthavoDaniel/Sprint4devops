@@ -1,0 +1,100 @@
+# Pipeline CI/CD para Azure Web App for Containers
+# Requisito 7: Pipelines CI/CD
+
+trigger:
+  branches:
+    include:
+      - master # Dispara em qualquer alteração na branch master (Regra II)
+
+variables:
+  # Variáveis de ambiente para o build
+  - name: azureServiceConnection
+    value: '<NOME_DA_SUA_SERVICE_CONNECTION_AZURE>' # Substitua pelo nome da sua Service Connection
+  - name: acrServiceConnection
+    value: '<NOME_DA_DA_SUA_SERVICE_CONNECTION_ACR>' # Substitua pelo nome da sua Service Connection ACR
+  - name: acrName
+    value: '<NOME_DO_SEU_ACR>.azurecr.io' # Substitua pelo nome do seu ACR
+  - name: webAppName
+    value: '<NOME_DO_SEU_WEB_APP>' # Substitua pelo nome do seu Web App
+  - name: dockerRegistryServiceConnection
+    value: '<ID_DA_SUA_SERVICE_CONNECTION_ACR>' # ID da Service Connection do ACR
+  - name: imageRepository
+    value: 'sprintdevops3-app'
+  - name: dockerfilePath
+    value: '$(Build.SourcesDirectory)/Dockerfile'
+  - name: tag
+    value: '$(Build.BuildId)'
+  - group: db-credentials # Grupo de Variáveis para dados sensíveis (Regra IV)
+
+stages:
+- stage: Build
+  displayName: Build e Push da Imagem Docker (CI)
+  jobs:
+  - job: Build
+    displayName: Build da Aplicação e Imagem
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Maven@4
+      displayName: 'Maven Package'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package' # Build e Testes automáticos (Requisito 7a)
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+        mavenVersionOption: 'Default'
+        mavenAuthenticateFeed: false
+        effectivePomSkip: false
+        sonarQubeRunAnalysis: false
+
+    - task: Docker@2
+      displayName: 'Build e Push da Imagem para ACR'
+      inputs:
+        command: 'buildAndPush'
+        repository: '$(imageRepository)'
+        dockerfile: '$(dockerfilePath)'
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        tags: |
+          $(tag)
+          latest
+        # Publicação do artefato (a imagem Docker) no Azure DevOps (Regra V)
+
+- stage: Deploy
+  displayName: Deploy para Azure Web App (CD)
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy para Web App
+    environment: 'Azure Web App' # Nome do ambiente no Azure DevOps
+    pool:
+      vmImage: 'ubuntu-latest'
+    variables:
+      # Variáveis do Grupo de Variáveis (Regra IV)
+      SPRING_DATASOURCE_URL: $(SPRING_DATASOURCE_URL)
+      SPRING_DATASOURCE_USERNAME: $(SPRING_DATASOURCE_USERNAME)
+      SPRING_DATASOURCE_PASSWORD: $(SPRING_DATASOURCE_PASSWORD)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            displayName: 'Azure Web App Deploy'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              appName: '$(webAppName)'
+              # Regra VII: Provisionamento (Deploy) em Azure Web App
+              containers: '$(acrName)/$(imageRepository):$(tag)'
+              # Configurações de aplicação (para passar as variáveis de DB)
+              appSettings: |
+                -SPRING_PROFILES_ACTIVE prod
+                -SPRING_DATASOURCE_URL $(SPRING_DATASOURCE_URL)
+                -SPRING_DATASOURCE_USERNAME $(SPRING_DATASOURCE_USERNAME)
+                -SPRING_DATASOURCE_PASSWORD $(SPRING_DATASOURCE_PASSWORD)
+                -DOCKER_REGISTRY_SERVER_URL $(acrName)
+                -DOCKER_REGISTRY_SERVER_USERNAME $(DOCKER_REGISTRY_SERVER_USERNAME)
+                -DOCKER_REGISTRY_SERVER_PASSWORD $(DOCKER_REGISTRY_SERVER_PASSWORD)
+            # CD: Deploy automático (Requisito 7b)
+            # Regra III: O CD dispara após novo artefato gerado (a imagem Docker)
