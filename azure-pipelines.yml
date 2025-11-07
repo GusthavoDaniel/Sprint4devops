@@ -22,67 +22,67 @@ variables:
   - group: db-credentials                   # Variable Group com as credenciais do PostgreSQL
 
 stages:
-# ============================
-# STAGE 1 - CI (Build + Docker)
-# ============================
-- stage: Build
-  displayName: Build e Push da Imagem Docker (CI)
-  jobs:
-  - job: Build
-    displayName: Build da Aplicação e Imagem
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - task: Maven@4
-      displayName: 'Maven Package'
-      inputs:
-        mavenPomFile: 'pom.xml'
-        goals: 'clean package'             # build + testes
-        publishJUnitResults: true
-        testResultsFiles: '**/surefire-reports/TEST-*.xml'
-        javaHomeOption: 'JDKVersion'
-        jdkVersionOption: '1.17'
-        mavenVersionOption: 'Default'
-        mavenAuthenticateFeed: false
-        effectivePomSkip: false
-        sonarQubeRunAnalysis: false
-
-    - task: Docker@2
-      displayName: 'Build e Push da Imagem para ACR'
-      inputs:
-        command: 'buildAndPush'
-        repository: '$(imageRepository)'          # sprintdevops3-app
-        dockerfile: '$(dockerfilePath)'           # Dockerfile na raiz
-        containerRegistry: '$(dockerRegistryServiceConnection)'  # sc-acr-sprint4
-        tags: |
-          $(tag)
-          latest
-
-# ============================
-# STAGE 2 - CD (Deploy)
-# ============================
-- stage: Deploy
-  displayName: Deploy para Azure Web App (CD)
-  dependsOn: Build
-  condition: succeeded()
-  jobs:
-  - deployment: Deploy
-    displayName: Deploy para Web App
-    environment: 'Azure Web App'
-    pool:
-      vmImage: 'ubuntu-latest'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureWebAppContainer@1
-            displayName: 'Azure Web App Deploy'
+  # ============================
+  # STAGE 1 - CI (Build + Docker)
+  # ============================
+  - stage: Build
+    displayName: Build e Push da Imagem Docker (CI)
+    jobs:
+      - job: Build
+        displayName: Build da Aplicação e Imagem
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Maven@4
+            displayName: 'Maven Package'
             inputs:
-              azureSubscription: '$(azureServiceConnection)'         # sc-azure-sprint4
-              appName: '$(webAppName)'                              # sprint4-api-rm554681
-              containers: '$(acrName)/$(imageRepository):$(tag)'    # acrdevops.../sprintdevops3-app:<buildId>
-              appSettings: |                                        # variáveis de ambiente no Web App
-                -SPRING_PROFILES_ACTIVE prod
-                -SPRING_DATASOURCE_URL $(SPRING_DATASOURCE_URL)
-                -SPRING_DATASOURCE_USERNAME $(SPRING_DATASOURCE_USERNAME)
-                -SPRING_DATASOURCE_PASSWORD $(SPRING_DATASOURCE_PASSWORD)
+              mavenPomFile: 'pom.xml'
+              goals: 'clean package'             # build + testes
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+              mavenVersionOption: 'Default'
+              mavenAuthenticateFeed: false
+              effectivePomSkip: false
+              sonarQubeRunAnalysis: false
+
+          - task: Docker@2
+            displayName: 'Build e Push da Imagem para ACR'
+            inputs:
+              command: 'buildAndPush'
+              repository: '$(imageRepository)'          # sprintdevops3-app
+              dockerfile: '$(dockerfilePath)'           # Dockerfile na raiz
+              containerRegistry: '$(dockerRegistryServiceConnection)'  # sc-acr-sprint4
+              tags: |
+                $(tag)
+                latest
+
+  # ============================
+  # STAGE 2 - CD (Deploy)
+  # ============================
+  - stage: Deploy
+    displayName: Deploy para Azure Web App (CD)
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy para Web App
+        environment: 'Azure Web App'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebAppContainer@1
+                  displayName: 'Azure Web App Deploy'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'         # sc-azure-sprint4
+                    appName: '$(webAppName)'                              # sprint4-api-rm554681
+                    containers: '$(acrName)/$(imageRepository):$(tag)'    # acrdevops.../sprintdevops3-app:<buildId>
+                    appSettings: |
+                      SPRING_PROFILES_ACTIVE=prod
+                      SPRING_DATASOURCE_URL=$(SPRING_DATASOURCE_URL)
+                      SPRING_DATASOURCE_USERNAME=$(SPRING_DATASOURCE_USERNAME)
+                      SPRING_DATASOURCE_PASSWORD=$(SPRING_DATASOURCE_PASSWORD)
