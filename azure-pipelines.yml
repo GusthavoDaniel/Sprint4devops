@@ -72,7 +72,11 @@ stages:
                     appName: '$(webAppName)'
                     containers: '$(acrName)/$(imageRepository):$(tag)'
                     appSettings: |
-                      SPRING_PROFILES_ACTIVE prod
-                      SPRING_DATASOURCE_URL=$(SPRING_DATASOURCE_URL)
-                      SPRING_DATASOURCE_USERNAME=$(SPRING_DATASOURCE_USERNAME)
-                      SPRING_DATASOURCE_PASSWORD=$(SPRING_DATASOURCE_PASSWORD)
+                    -name: SPRING_PROFILES_ACTIVE
+                     value: prod
+                    -name: SPRING_DATASOURCE_URL
+                     value: $(SPRING_DATASOURCE_URL)
+                    -name: SPRING_DATASOURCE_USERNAME
+                     value: $(SPRING_DATASOURCE_USERNAME)
+                    -name: SPRING_DATASOURCE_PASSWORD
+                     value: $(SPRING_DATASOURCE_PASSWORD)
