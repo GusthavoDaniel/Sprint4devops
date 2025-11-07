@@ -1,30 +1,35 @@
 trigger:
   branches:
     include:
-      - main
+      - main        # branch principal do repositório
 
 variables:
+  # Variáveis globais da pipeline
   - name: azureServiceConnection
-    value: 'sc-azure-sprint4'
+    value: 'sc-azure-sprint4'               # Service Connection ARM (rg-sprint4-devops)
   - name: acrName
-    value: 'acrdevops554681.azurecr.io'
+    value: 'acrdevops554681.azurecr.io'     # Login server do ACR
   - name: webAppName
-    value: 'sprint4-api-rm554681'
+    value: 'sprint4-api-rm554681'           # Nome do Web App
   - name: dockerRegistryServiceConnection
-    value: 'sc-acr-sprint4'
+    value: 'sc-acr-sprint4'                 # Service Connection do ACR
   - name: imageRepository
-    value: 'sprintdevops3-app'
+    value: 'sprintdevops3-app'              # Repositório de imagem dentro do ACR
   - name: dockerfilePath
     value: '$(Build.SourcesDirectory)/Dockerfile'
   - name: tag
-    value: '$(Build.BuildId)'
-  - group: db-credentials
+    value: '$(Build.BuildId)'               # Tag da imagem = ID do build
+  - group: db-credentials                   # Variable Group com SPRING_DATASOURCE_*
 
 stages:
+  # ============================
+  # STAGE 1 - CI (Build + Docker)
+  # ============================
   - stage: Build
     displayName: Build e Push da Imagem Docker (CI)
     jobs:
       - job: Build
+        displayName: Build da Aplicação e Imagem
         pool:
           vmImage: 'ubuntu-latest'
         steps:
@@ -32,25 +37,30 @@ stages:
             displayName: 'Maven Package'
             inputs:
               mavenPomFile: 'pom.xml'
-              goals: 'clean package'
+              goals: 'clean package'             # build + testes
               publishJUnitResults: true
               testResultsFiles: '**/surefire-reports/TEST-*.xml'
               javaHomeOption: 'JDKVersion'
               jdkVersionOption: '1.17'
               mavenVersionOption: 'Default'
+              mavenAuthenticateFeed: false
+              effectivePomSkip: false
               sonarQubeRunAnalysis: false
 
           - task: Docker@2
             displayName: 'Build e Push da Imagem para ACR'
             inputs:
               command: 'buildAndPush'
-              repository: '$(imageRepository)'
-              dockerfile: '$(dockerfilePath)'
-              containerRegistry: '$(dockerRegistryServiceConnection)'
+              repository: '$(imageRepository)'          # sprintdevops3-app
+              dockerfile: '$(dockerfilePath)'           # Dockerfile na raiz
+              containerRegistry: '$(dockerRegistryServiceConnection)'  # sc-acr-sprint4
               tags: |
                 $(tag)
                 latest
 
+  # ============================
+  # STAGE 2 - CD (Deploy)
+  # ============================
   - stage: Deploy
     displayName: Deploy para Azure Web App (CD)
     dependsOn: Build
@@ -68,15 +78,11 @@ stages:
                 - task: AzureWebAppContainer@1
                   displayName: 'Azure Web App Deploy'
                   inputs:
-                    azureSubscription: '$(azureServiceConnection)'
-                    appName: '$(webAppName)'
-                    containers: '$(acrName)/$(imageRepository):$(tag)'
-                    appSettings: |
-                    -name: SPRING_PROFILES_ACTIVE
-                     value:prod
-                    -name: SPRING_DATASOURCE_URL
-                     value $(SPRING_DATASOURCE_URL)
-                    -name: SPRING_DATASOURCE_USERNAME
-                     value:$(SPRING_DATASOURCE_USERNAME)
-                    -name: SPRING_DATASOURCE_PASSWORD
-                     value:$(SPRING_DATASOURCE_PASSWORD)
+                    azureSubscription: '$(azureServiceConnection)'         # sc-azure-sprint4
+                    appName: '$(webAppName)'                              # sprint4-api-rm554681
+                    containers: '$(acrName)/$(imageRepository):$(tag)'    # acrdevops.../sprintdevops3-app:<buildId>
+                    appSettings: >
+                      -SPRING_PROFILES_ACTIVE prod
+                      -SPRING_DATASOURCE_URL $(SPRING_DATASOURCE_URL)
+                      -SPRING_DATASOURCE_USERNAME $(SPRING_DATASOURCE_USERNAME)
+                      -SPRING_DATASOURCE_PASSWORD $(SPRING_DATASOURCE_PASSWORD)
