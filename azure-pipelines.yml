@@ -1,28 +1,25 @@
-# Pipeline CI/CD para Azure Web App for Containers
-# Requisito 7: Pipelines CI/CD
-
 trigger:
   branches:
     include:
-      - master        # Se sua branch principal for "main", troque aqui para "main"
+      - main        
 
 variables:
-  # Variáveis de ambiente para o build / deploy
+ 
   - name: azureServiceConnection
-    value: 'sc-azure-sprint4'              # Service Connection ARM (Resource Group rg-sprint4-devops)
+    value: 'sc-azure-sprint4'              
   - name: acrName
-    value: 'acrdevops554681.azurecr.io'    # Login server do seu ACR
+    value: 'acrdevops554681.azurecr.io'    
   - name: webAppName
-    value: 'sprint4-api-rm554681'          # Nome do seu Web App
+    value: 'sprint4-api-rm554681'          
   - name: dockerRegistryServiceConnection
-    value: 'sc-acr-sprint4'                # Service Connection do Azure Container Registry
+    value: 'sc-acr-sprint4'                
   - name: imageRepository
-    value: 'sprintdevops3-app'             # Nome do repositório de imagem dentro do ACR
+    value: 'sprintdevops3-app'             
   - name: dockerfilePath
     value: '$(Build.SourcesDirectory)/Dockerfile'
   - name: tag
-    value: '$(Build.BuildId)'              # Tag da imagem = ID do build
-  - group: db-credentials                  # Variable Group com as credenciais do PostgreSQL
+    value: '$(Build.BuildId)'              
+  - group: db-credentials                  
 
 stages:
 # ============================
@@ -40,7 +37,7 @@ stages:
       displayName: 'Maven Package'
       inputs:
         mavenPomFile: 'pom.xml'
-        goals: 'clean package'             # Build + testes automáticos (Requisito 7a)
+        goals: 'clean package'             
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
         javaHomeOption: 'JDKVersion'
@@ -54,13 +51,13 @@ stages:
       displayName: 'Build e Push da Imagem para ACR'
       inputs:
         command: 'buildAndPush'
-        repository: '$(imageRepository)'    # sprintdevops3-app
-        dockerfile: '$(dockerfilePath)'     # Dockerfile na raiz do repo
-        containerRegistry: '$(dockerRegistryServiceConnection)'  # sc-acr-sprint4
+        repository: '$(imageRepository)'
+        dockerfile: '$(dockerfilePath)'
+        containerRegistry: '$(dockerRegistryServiceConnection)'
         tags: |
           $(tag)
           latest
-        # Aqui o pipeline gera a imagem e publica no ACR (Requisito 7 - Regra V)
+
 
 # ============================
 # STAGE 2 - CD (Deploy)
@@ -76,7 +73,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     variables:
-      # Variáveis vindas do Variable Group db-credentials (Regra IV)
+      
       SPRING_DATASOURCE_URL: $(SPRING_DATASOURCE_URL)
       SPRING_DATASOURCE_USERNAME: $(SPRING_DATASOURCE_USERNAME)
       SPRING_DATASOURCE_PASSWORD: $(SPRING_DATASOURCE_PASSWORD)
@@ -87,12 +84,11 @@ stages:
           - task: AzureWebAppContainer@1
             displayName: 'Azure Web App Deploy'
             inputs:
-              azureSubscription: '$(azureServiceConnection)'     # sc-azure-sprint4
-              appName: '$(webAppName)'                          # sprint4-api-rm554681
-              containers: '$(acrName)/$(imageRepository):$(tag)' # acrdevops554681.azurecr.io/sprintdevops3-app:<buildId>
-              appSettings: |                                    # Configurações da aplicação no Web App
+              azureSubscription: '$(azureServiceConnection)'
+              appName: '$(webAppName)'
+              containers: '$(acrName)/$(imageRepository):$(tag)'
+              appSettings: |
                 SPRING_PROFILES_ACTIVE prod
                 SPRING_DATASOURCE_URL $(SPRING_DATASOURCE_URL)
                 SPRING_DATASOURCE_USERNAME $(SPRING_DATASOURCE_USERNAME)
                 SPRING_DATASOURCE_PASSWORD $(SPRING_DATASOURCE_PASSWORD)
-            # CD: Deploy automático após novo artefato (imagem Docker) - Requisito 7b
